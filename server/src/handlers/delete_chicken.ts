@@ -1,6 +1,23 @@
+import { db } from '../db';
+import { chickensTable, eggRecordsTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
+
 export async function deleteChicken(id: number): Promise<{ success: boolean }> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is deleting a chicken record from the database.
-    // Should also handle cascading deletion of related egg records or prevent deletion if records exist.
-    return Promise.resolve({ success: true });
+  try {
+    // First, delete all related egg records to avoid foreign key constraint violations
+    await db.delete(eggRecordsTable)
+      .where(eq(eggRecordsTable.chicken_id, id))
+      .execute();
+
+    // Then delete the chicken record
+    const result = await db.delete(chickensTable)
+      .where(eq(chickensTable.id, id))
+      .execute();
+
+    // Check if any rows were deleted (chicken existed)
+    return { success: (result.rowCount ?? 0) > 0 };
+  } catch (error) {
+    console.error('Chicken deletion failed:', error);
+    throw error;
+  }
 }

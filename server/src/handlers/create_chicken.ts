@@ -1,12 +1,28 @@
+import { db } from '../db';
+import { chickensTable } from '../db/schema';
 import { type CreateChickenInput, type Chicken } from '../schema';
 
-export async function createChicken(input: CreateChickenInput): Promise<Chicken> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating a new chicken record and persisting it in the database.
-    return Promise.resolve({
-        id: 0, // Placeholder ID
+export const createChicken = async (input: CreateChickenInput): Promise<Chicken> => {
+  try {
+    // Insert chicken record
+    const result = await db.insert(chickensTable)
+      .values({
         name: input.name,
-        breed: input.breed,
-        created_at: new Date() // Placeholder date
-    } as Chicken);
-}
+        breed: input.breed
+      })
+      .returning()
+      .execute();
+
+    // Return the created chicken
+    const chicken = result[0];
+    return {
+      id: chicken.id,
+      name: chicken.name,
+      breed: chicken.breed,
+      created_at: chicken.created_at
+    };
+  } catch (error) {
+    console.error('Chicken creation failed:', error);
+    throw error;
+  }
+};

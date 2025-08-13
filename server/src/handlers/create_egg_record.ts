@@ -1,14 +1,39 @@
+import { db } from '../db';
+import { eggRecordsTable, chickensTable } from '../db/schema';
 import { type CreateEggRecordInput, type EggRecord } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function createEggRecord(input: CreateEggRecordInput): Promise<EggRecord> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating a new egg record and persisting it in the database.
-    // Should validate that the chicken_id exists before creating the record.
-    return Promise.resolve({
-        id: 0, // Placeholder ID
+export const createEggRecord = async (input: CreateEggRecordInput): Promise<EggRecord> => {
+  try {
+    // Validate that the chicken exists before creating the egg record
+    const existingChicken = await db.select()
+      .from(chickensTable)
+      .where(eq(chickensTable.id, input.chicken_id))
+      .execute();
+
+    if (existingChicken.length === 0) {
+      throw new Error(`Chicken with id ${input.chicken_id} does not exist`);
+    }
+
+    // Insert egg record
+    const result = await db.insert(eggRecordsTable)
+      .values({
         chicken_id: input.chicken_id,
-        date: new Date(input.date),
-        quantity: input.quantity,
-        created_at: new Date() // Placeholder date
-    } as EggRecord);
-}
+        date: input.date, // date column accepts string in YYYY-MM-DD format
+        quantity: input.quantity
+      })
+      .returning()
+      .execute();
+
+    const eggRecord = result[0];
+    
+    // Convert date string to Date object for response
+    return {
+      ...eggRecord,
+      date: new Date(eggRecord.date + 'T00:00:00.000Z') // Convert date string to Date object
+    };
+  } catch (error) {
+    console.error('Egg record creation failed:', error);
+    throw error;
+  }
+};
